@@ -28,11 +28,15 @@ function App() {
     }
   }, [onProcessing]);
 
-  const evalPrediction = async (csvPath) => {
+  const evalPrediction = useCallback(async (csvPath) => {
     const result = await window.api.evalPrediction(csvPath, gtInput.path);
 
     console.log(result);
-  };
+  }, [gtInput]);
+
+  const printMessage = useCallback((scope, status, action) => {
+    setMessages((messages) => messages.concat(`[${scope}] ${status}: ${action}`));
+  }, []);
 
   useEffect(() => {
 
@@ -42,22 +46,23 @@ function App() {
     if (!videoInput) return;
 
     setOnProcessing(true);
-    setMessages((messages) => messages.concat(`[${videoInput.name}] start: extracting frames`));
+
+    printMessage(videoInput.name, "start", "extracting frames");
 
     const workDir = await window.api.getWorkDir();
     await window.api.extractFrames(workDir, videoInput.path);
 
-    setMessages((messages) => messages.concat(`[${videoInput.name}] done: extracting frames`));
+    printMessage(videoInput.name, "done", "extracting frames");
 
-    setMessages((messages) => messages.concat(`[${videoInput.name}] start: prediction`));
+    printMessage(videoInput.name, "start", "prediction");
 
     // TODO: 도커 컨테이너에 [workDir]/frames 전달 -> prediction 수행 -> 결과 .csv로 저장 (workDir에) => 결과 파일 저장 경로 반환
-    const csvPath = await window.api.predict(workDir, "mobile");
-    console.log(csvPath);
+    await Promise.all([
+      window.api.predict(workDir, videoInput.name, "mobile"),
+      window.api.predict(workDir, videoInput.name, "efficient"),
+    ]);
 
-    setMessages((messages) => messages.concat(`[${videoInput.name}] done: prediction`));
-
-    // TODO: prediction 결과 바탕으로 비디오 편집
+    printMessage(videoInput.name, "done", "prediction");
 
     // TODO: .csv 파일 경로 받고 -> eval -> 결과 .json으로 저장 (컨테이너가 직접 저장) => 결과 파일 저장 경로 반환
     // await evalPrediction(csvPath);
@@ -75,7 +80,7 @@ function App() {
     <div>
       <h1>Eval Tool</h1>
       <section>
-        <FileLoader id="gt" label="gt.json" accept="application/JSON" onChange={onChange} />
+        {/* <FileLoader id="gt" label="gt.json" accept="application/JSON" onChange={onChange} /> */}
         <FileLoader id="video" label="video.mp4" accept="video/mp4" onChange={onChange} />
       </section>
       <S.ScrollableSection>
@@ -88,7 +93,7 @@ function App() {
             <tr>
               <th>날짜</th>
               <th>비디오</th>
-              <th>gt</th>
+              {/* <th>gt</th> */}
               <th>디렉토리</th>
             </tr>
           </thead>

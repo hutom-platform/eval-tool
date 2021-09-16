@@ -8,6 +8,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 const { v4: uuidv4 } = require("uuid");
 const ffmpegUtils = require("./utils/ffmpeg");
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
+const { parsePrediction, filterPrediction } = require("./utils/parser");
+const { extract } = require("./utils/ffmpeg-helper");
 
 const getWindowId = async () => {
   const windowId = await ipcRenderer.invoke("get-window-id", "app");
@@ -33,6 +35,7 @@ const extractFrames = async (workDir, videoPath) => {
   const framesDir = path.join(workDir, "frames");
   
   await fs.mkdir(framesDir, { recursive: true });
+  await fs.copyFile(videoPath, path.join(workDir, path.basename(videoPath)));
   await ffmpegUtils.extractFrames(videoPath, framesDir);
 };
 
@@ -54,16 +57,47 @@ const writeCsv = async (workDir, withModel, prediction) => {
   return csvPath;
 };
 
-const predict = async (workDir, withModel) => {
+const predict = async (workDir, videoName, withModel) => {
   const command = `docker run --rm -i -v ${path.join(__dirname, "oob")}:/OOB_RECOG -v ${path.dirname(workDir.replace(" ", ""))}:/OOB_RECOG/mount evaltool python test.py ${path.basename(workDir)} ${withModel}`;
   console.log(command);
 
   const { stdout } = await exec(command);
 
   if (stdout) {
-    const prediction = JSON.parse(stdout);
-    console.log(prediction);
+    console.log(stdout);
+
+    let prediction;
+
+    try {
+      prediction = JSON.parse(stdout);
+    } catch (error) {
+      prediction = JSON.parse(stdout.trim().split("\n").pop());
+    } finally {
+      console.log(prediction);
+    }
     
+    const parsedPrediction = parsePrediction(prediction);
+    const inBody = filterPrediction(parsedPrediction, true);
+    const outOfBody = filterPrediction(parsedPrediction, false);
+
+    console.log(parsedPrediction, inBody, outOfBody);
+
+    const videoPath = path.join(workDir, videoName);
+
+    const extractPromises = [];
+
+    if (inBody.length > 0) {
+      const inBodyVideoPath = path.resolve(videoPath, videoPath.replace(".mp4", `_in_body_${withModel}.mp4`));
+      extractPromises.push(extract(inBody, videoPath, inBodyVideoPath));
+    }
+
+    if (outOfBody.length > 0) {
+      const outOfBodyVideoPath = path.resolve(videoPath, videoPath.replace(".mp4", `_out_of_body_${withModel}.mp4`));
+      extractPromises.push(extract(outOfBody, videoPath, outOfBodyVideoPath));
+    }
+
+    await Promise.all(extractPromises);
+
     const csvPath = await writeCsv(workDir, withModel, prediction);
 
     return csvPath;
