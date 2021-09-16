@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import FileLoader from "../../components/FileLoader";
+import { db, subscribe } from "../../services/idb";
 import * as S from "./style";
 
 function App() {
@@ -7,6 +8,7 @@ function App() {
   const [gtInput, setGtInput] = useState();
   const [onProcessing, setOnProcessing] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [records, setRecords] = useState([]);
 
   const endOfMessagesRef = useRef(null);
 
@@ -36,6 +38,10 @@ function App() {
 
   const printMessage = useCallback((scope, status, action) => {
     setMessages((messages) => messages.concat(`[${scope}] ${status}: ${action}`));
+  }, []);
+
+  useEffect(async () => {
+    await subscribe("records", setRecords);
   }, []);
 
   useEffect(() => {
@@ -68,6 +74,11 @@ function App() {
     // await evalPrediction(csvPath);
 
     // TODO: IDB 업데이트 (날짜, 비디오 이름, gt 이름, workDir) -> 업데이트 구독 -> 테이블 렌더
+    db.records.add({
+      date: Date.now(),
+      videoName: videoInput.name,
+      workDir,
+    });
 
     setOnProcessing(false);
   }, [videoInput]);
@@ -76,12 +87,17 @@ function App() {
     endOfMessagesRef.current.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    console.log(records);
+  }, [records]);
+
+  // TODO: 렌더 최적화
   return (
-    <div>
+    <S.Page>
       <h1>Eval Tool</h1>
       <section>
         {/* <FileLoader id="gt" label="gt.json" accept="application/JSON" onChange={onChange} /> */}
-        <FileLoader id="video" label="video.mp4" accept="video/mp4" onChange={onChange} />
+        <FileLoader id="video" label="비디오를 선택 해 주세요." accept="video/mp4" onChange={onChange} />
       </section>
       <S.ScrollableSection>
         {messages.map((message, i) => <div key={i}>{message}</div>)}
@@ -97,9 +113,20 @@ function App() {
               <th>디렉토리</th>
             </tr>
           </thead>
+          <tbody>
+            {
+              records.map((record) => (
+                <tr key={record.date}>
+                  <td>{(new Date(record.date)).toString()}</td>
+                  <td>{record.videoName}</td>
+                  <S.ClickableTd onClick={() => window.api.openPath(record.workDir)}>{record.workDir}</S.ClickableTd>
+                </tr>
+              ))
+            }
+          </tbody>
         </table>
       </section>
-    </div>
+    </S.Page>
   );
 }
 

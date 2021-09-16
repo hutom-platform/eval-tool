@@ -9,8 +9,8 @@ const windowRegistry = {
 
 async function createAppWindow() {
   windowRegistry.app = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1400,
+    height: 900,
     webPreferences: {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),

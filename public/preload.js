@@ -4,7 +4,7 @@ const path = require("path");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, shell } = require("electron");
 const { v4: uuidv4 } = require("uuid");
 const ffmpegUtils = require("./utils/ffmpeg");
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
@@ -28,14 +28,32 @@ const getWorkDir = async () => {
   const appName = await ipcRenderer.invoke("getName");
   const workDir = path.join(appDataPath, appName, "storage", uuidv4());
   
+  try {
+    await fs.access(workDir);
+  } catch {
+    await fs.mkdir(workDir, { recursive: true });
+  }
+  
   return workDir;
 };
 
 const extractFrames = async (workDir, videoPath) => {
   const framesDir = path.join(workDir, "frames");
   
-  await fs.mkdir(framesDir, { recursive: true });
-  await fs.copyFile(videoPath, path.join(workDir, path.basename(videoPath)));
+  try {
+    await fs.access(framesDir);
+  } catch {
+    await fs.mkdir(framesDir, { recursive: true });
+  }
+
+  const copiedVideoPath = path.join(workDir, path.basename(videoPath));
+
+  try {
+    await fs.access(copiedVideoPath);
+  } catch (error) {
+    await fs.copyFile(videoPath, copiedVideoPath);
+  }
+
   await ffmpegUtils.extractFrames(videoPath, framesDir);
 };
 
@@ -105,7 +123,13 @@ const predict = async (workDir, videoName, withModel) => {
 };
 
 const evalPrediction = async (csvPath, gtPath) => {
-  await fs.copyFile(gtPath, path.join(path.dirname(csvPath), path.basename(gtPath)));
+  const copiedGtPath = path.join(path.dirname(csvPath), path.basename(gtPath));
+
+  try {
+    await fs.access(copiedGtPath);
+  } catch (error) {
+    await fs.copyFile(gtPath, copiedGtPath);
+  }
 
   const command = `docker run --rm -i -v ${path.join(__dirname, "oob")}:/OOB_RECOG -v ${path.dirname(csvPath.replace(" ", ""))}:/OOB_RECOG/mount evaltool python eval.py --model_output_csv_path ./mount/${path.basename(csvPath)} --gt_json_path ./mount/${path.basename(gtPath)} --save_dir_path ${path.dirname(csvPath).replace(" ", "")} --inference_step 5`;
   console.log(command);
@@ -117,10 +141,15 @@ const evalPrediction = async (csvPath, gtPath) => {
   }
 };
 
+const openPath = (path) => {
+  shell.openPath(path);
+};
+
 contextBridge.exposeInMainWorld("api", {
   getPath,
   getWorkDir,
   extractFrames,
   predict,
   evalPrediction,
+  openPath,
 });

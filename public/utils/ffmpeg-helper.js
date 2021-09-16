@@ -1,9 +1,10 @@
 const fs = require("fs/promises");
 const path = require("path");
+const { v4: uuidv4 } = require("uuid");
 const ffmpegUtils = require("./ffmpeg");
 
 const extract = async (guide, srcPath, dstPath) => {
-  const tmpDir = path.join(path.dirname(dstPath), Date.now().toString());
+  const tmpDir = path.join(path.dirname(dstPath), uuidv4());
 
   await fs.mkdir(tmpDir);
 
@@ -22,7 +23,7 @@ const extract = async (guide, srcPath, dstPath) => {
   );
 
   await Promise.all(sliceTasks);
-  await ffmpegUtils.concat(sliced, dstPath);
+  await ffmpegUtils.concat(sliced, dstPath, tmpDir);
 
   await fs.rmdir(tmpDir, { recursive: true, force: true });
 };

@@ -24,6 +24,7 @@ const readMetadata = (input) => {
 
         const { width, height } = data.streams[0];
         const { duration, size } = data.format;
+        
         resolve({ width, height, duration, size });
       });
   });
@@ -55,13 +56,12 @@ const slice = (input, start, duration, output) => {
  * @param {string[]} inputs
  * @param {string} output
  */
-const concat = async (inputs, output) => {
+const concat = async (inputs, output, tmpDir) => {
   const list = inputs.map((input) => `file '${input}'`).join("\n");
-  const listPath = path.join(
-    path.dirname(output),
-    `${path.basename(output).slice(0, 3)}_list.txt`,
-  );
+  const listPath = path.join(tmpDir, "list.txt");
+
   await fs.writeFile(listPath, list);
+
   try {
     await new Promise((resolve, reject) => {
       new ffmpeg(listPath)

@@ -1,9 +1,10 @@
 import PropTypes from "prop-types";
+import * as S from "./style";
 
 function FileLoader({ id, label, accept, onChange }) {
   return (
     <div>
-      <label htmlFor={id}>{label}</label>
+      <S.Label htmlFor={id}>{label}</S.Label>
       <input type="file" id={id} accept={accept} onChange={onChange} />
     </div>
   );
