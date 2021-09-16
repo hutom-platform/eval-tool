@@ -28,6 +28,12 @@ function App() {
     }
   }, [onProcessing]);
 
+  const evalPrediction = async (csvPath) => {
+    const result = await window.api.evalPrediction(csvPath, gtInput.path);
+
+    console.log(result);
+  };
+
   useEffect(() => {
 
   }, [gtInput]);
@@ -38,11 +44,26 @@ function App() {
     setOnProcessing(true);
     setMessages((messages) => messages.concat(`[${videoInput.name}] start: extracting frames`));
 
-    const framesPath = await window.api.extractFrames(videoInput.path);
-    // TODO: 도커 컨테이너에 framePath 전달 -> prediction 수행 -> 결과 .csv로 저장 (workDir에) -> eval -> 결과 .json으로 저장 (컨테이너가 직접 저장) => 결과 파일 저장 경로 반환
-    // TODO: IDB 업데이트 (날짜, 비디오 이름, gt 이름, workDir) -> 업데이트 구독 -> 테이블 렌더
+    const workDir = await window.api.getWorkDir();
+    await window.api.extractFrames(workDir, videoInput.path);
 
     setMessages((messages) => messages.concat(`[${videoInput.name}] done: extracting frames`));
+
+    setMessages((messages) => messages.concat(`[${videoInput.name}] start: prediction`));
+
+    // TODO: 도커 컨테이너에 [workDir]/frames 전달 -> prediction 수행 -> 결과 .csv로 저장 (workDir에) => 결과 파일 저장 경로 반환
+    const csvPath = await window.api.predict(workDir, "mobile");
+    console.log(csvPath);
+
+    setMessages((messages) => messages.concat(`[${videoInput.name}] done: prediction`));
+
+    // TODO: prediction 결과 바탕으로 비디오 편집
+
+    // TODO: .csv 파일 경로 받고 -> eval -> 결과 .json으로 저장 (컨테이너가 직접 저장) => 결과 파일 저장 경로 반환
+    // await evalPrediction(csvPath);
+
+    // TODO: IDB 업데이트 (날짜, 비디오 이름, gt 이름, workDir) -> 업데이트 구독 -> 테이블 렌더
+
     setOnProcessing(false);
   }, [videoInput]);
 
