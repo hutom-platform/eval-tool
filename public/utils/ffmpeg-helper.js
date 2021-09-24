@@ -22,8 +22,12 @@ const extract = async (guide, srcPath, dstPath) => {
     [],
   );
 
-  await Promise.all(sliceTasks);
-  await ffmpegUtils.concat(sliced, dstPath, tmpDir);
+  try {
+    await Promise.all(sliceTasks);
+    await ffmpegUtils.concat(sliced, dstPath, tmpDir);
+  } catch (error) {
+    console.error(error);
+  }
 
   await fs.rmdir(tmpDir, { recursive: true, force: true });
 };

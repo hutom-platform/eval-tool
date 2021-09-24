@@ -82,7 +82,6 @@ const predict = async (workDir, videoName, withModel) => {
   const { stdout } = await exec(command);
 
   if (stdout) {
-    console.log(stdout);
 
     let prediction;
 
@@ -98,8 +97,6 @@ const predict = async (workDir, videoName, withModel) => {
     const inBody = filterPrediction(parsedPrediction, true);
     const outOfBody = filterPrediction(parsedPrediction, false);
 
-    console.log(parsedPrediction, inBody, outOfBody);
-
     const videoPath = path.join(workDir, videoName);
 
     const extractPromises = [];
@@ -114,7 +111,13 @@ const predict = async (workDir, videoName, withModel) => {
       extractPromises.push(extract(outOfBody, videoPath, outOfBodyVideoPath));
     }
 
-    await Promise.all(extractPromises);
+    const extractResults = await Promise.allSettled(extractPromises);
+
+    extractResults.forEach((result) => {
+      if (result.status === "rejected") {
+        console.log(result);
+      }
+    });
 
     const csvPath = await writeCsv(workDir, withModel, prediction);
 
