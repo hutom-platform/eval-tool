@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import { memo } from "react";
 import * as S from "./style";
 
 function FileLoader({ id, label, accept, onChange }) {
@@ -10,7 +11,7 @@ function FileLoader({ id, label, accept, onChange }) {
   );
 }
 
-export default FileLoader;
+export default memo(FileLoader);
 
 FileLoader.propTypes = {
   id: PropTypes.string.isRequired,
