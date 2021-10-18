@@ -18,19 +18,17 @@ async function createAppWindow() {
   });
 
   windowRegistry.app.on("close", () => app.quit());
-  
+
   if (isDev) {
     await installExtension(REACT_DEVELOPER_TOOLS);
-    
+
     windowRegistry.app.loadURL("http://localhost:3000");
     windowRegistry.app.webContents.openDevTools();
-    
-    return;
-  } 
 
-  await windowRegistry.app.loadFile(
-    `${path.join(__dirname, "../build/index.html")}`,
-  );
+    return;
+  }
+
+  await windowRegistry.app.loadFile(`${path.join(__dirname, "../build/index.html")}`);
 }
 
 function addIpcListeners() {

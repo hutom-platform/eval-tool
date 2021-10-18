@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import FileLoader from "../../components/FileLoader";
 import RecordsTable from "../../components/RecordsTable";
-import { ScrollableSection } from "../../components/ScrollableSection/style";
+import ScrollableSection from "../../components/ScrollableSection";
 import { db, subscribe } from "../../services/idb";
 
 function App() {
@@ -11,23 +11,26 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [records, setRecords] = useState([]);
 
-  const onChange = useCallback(async (e) => {
-    if (onProcessing) return;
+  const onChange = useCallback(
+    async (e) => {
+      if (onProcessing) return;
 
-    const file = e.target.files[0];
+      const file = e.target.files[0];
 
-    if (!file) return;
+      if (!file) return;
 
-    switch (e.target.id) {
-      case "gt":
-        setGtInput(file);
-        break;
+      switch (e.target.id) {
+        case "gt":
+          setGtInput(file);
+          break;
 
-      case "video":
-        setVideoInput(file);
-        break;
-    }
-  }, [onProcessing]);
+        case "video":
+          setVideoInput(file);
+          break;
+      }
+    },
+    [onProcessing]
+  );
 
   const printMessage = useCallback((scope, status, action) => {
     setMessages((messages) => messages.concat(`[${scope}] ${status}: ${action}`));
@@ -61,10 +64,13 @@ function App() {
 
     // TODO: 도커 컨테이너에 [workDir]/frames 전달 -> prediction 수행 -> 결과 .csv로 저장 (workDir에) => 결과 파일 저장 경로 반환
     // TODO: .csv 파일 경로 받고 -> eval -> 결과 .json으로 저장 (컨테이너가 직접 저장) => 결과 파일 저장 경로 반환
-    const promises = ["mobile", "efficient"].map((withModel) => (
-      window.api.predict(workDir, videoInput.name, withModel)
-        .then((csvPath) => window.api.evalPrediction(csvPath, gtInput.path))
-    ));
+    const promises = ["mobile", "efficient"].map((withModel) =>
+      window.api.predict(workDir, videoInput.name, withModel).then((csvPath) => {
+        if (csvPath.includes("mobile")) {
+          window.api.evalPrediction(csvPath, gtInput.path);
+        }
+      })
+    );
 
     const results = await Promise.allSettled(promises);
 
@@ -91,7 +97,12 @@ function App() {
     <>
       <h1>Eval Tool</h1>
       <section>
-        <FileLoader id="gt" label="JSON 형식의 gt 파일을 선택 해 주세요." accept="application/JSON" onChange={onChange} />
+        <FileLoader
+          id="gt"
+          label="JSON 형식의 gt 파일을 선택 해 주세요."
+          accept="application/JSON"
+          onChange={onChange}
+        />
         <FileLoader id="video" label="비디오를 선택 해 주세요." accept="video/mp4" onChange={onChange} />
       </section>
       <ScrollableSection messages={messages} />

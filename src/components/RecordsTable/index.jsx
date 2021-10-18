@@ -35,9 +35,9 @@ export default memo(RecordsTable, areEqual);
 
 RecordsTable.propTypes = {
   records: PropTypes.arrayOf(PropTypes.shape({
-    data: PropTypes.string.isRequired,
-    videoName: PropTypes.string.isRequired,
-    workDir: PropTypes.string.isRequired,
+    data: PropTypes.string,
+    videoName: PropTypes.string,
+    workDir: PropTypes.string,
   })).isRequired,
   openWorkDir: PropTypes.func.isRequired,
 };

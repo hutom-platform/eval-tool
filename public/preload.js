@@ -1,4 +1,3 @@
-
 const fs = require("fs/promises");
 const path = require("path");
 const util = require("util");
@@ -13,7 +12,7 @@ const { extract } = require("./utils/ffmpeg-helper");
 
 const getWindowId = async () => {
   const windowId = await ipcRenderer.invoke("get-window-id", "app");
-  
+
   return windowId;
 };
 
@@ -27,19 +26,19 @@ const getWorkDir = async () => {
   const appDataPath = await ipcRenderer.invoke("getPath", "appData");
   const appName = await ipcRenderer.invoke("getName");
   const workDir = path.join(appDataPath, appName, "storage", uuidv4());
-  
+
   try {
     await fs.access(workDir);
   } catch {
     await fs.mkdir(workDir, { recursive: true });
   }
-  
+
   return workDir;
 };
 
 const extractFrames = async (workDir, videoPath) => {
   const framesDir = path.join(workDir, "frames");
-  
+
   try {
     await fs.access(framesDir);
   } catch {
@@ -76,13 +75,14 @@ const writeCsv = async (workDir, withModel, prediction) => {
 };
 
 const predict = async (workDir, videoName, withModel) => {
-  const command = `docker run --rm -i -v ${path.join(__dirname, "oob")}:/OOB_RECOG -v ${path.dirname(workDir.replace(" ", ""))}:/OOB_RECOG/mount evaltool python test.py ${path.basename(workDir)} ${withModel}`;
+  const command = `docker run --rm -i -v ${path.join(__dirname, "oob")}:/OOB_RECOG -v ${path.dirname(
+    workDir.replace(" ", "")
+  )}:/OOB_RECOG/mount evaltool python test.py ${path.basename(workDir)} ${withModel}`;
   console.log(command);
 
   const { stdout } = await exec(command);
 
   if (stdout) {
-
     let prediction;
 
     try {
@@ -92,7 +92,7 @@ const predict = async (workDir, videoName, withModel) => {
     } finally {
       console.log(prediction);
     }
-    
+
     const parsedPrediction = parsePrediction(prediction);
     const inBody = filterPrediction(parsedPrediction, true);
     const outOfBody = filterPrediction(parsedPrediction, false);
@@ -134,7 +134,15 @@ const evalPrediction = async (csvPath, gtPath) => {
     await fs.copyFile(gtPath, copiedGtPath);
   }
 
-  const command = `docker run --rm -i -v ${path.join(__dirname, "oob")}:/OOB_RECOG -v ${path.dirname(csvPath.replace(" ", ""))}:/OOB_RECOG/mount evaltool python eval.py --model_output_csv_path ./mount/${path.basename(csvPath)} --gt_json_path ./mount/${path.basename(gtPath)} --save_dir_path ${path.dirname(csvPath).replace(" ", "")} --inference_step 5`;
+  const command = `docker run --rm -i -v ${path.join(__dirname, "oob")}:/OOB_RECOG -v ${path.dirname(
+    csvPath.replace(" ", "")
+  )}:/OOB_RECOG/mount evaltool python eval.py --model_output_csv_path ./mount/${path.basename(
+    csvPath
+  )} --gt_json_path ./mount/${path.basename(gtPath)} --save_file_path ${path.join(
+    path.dirname(csvPath).replace(" ", ""),
+    "eval.json"
+  )}`;
+
   console.log(command);
 
   const { stdout } = await exec(command);
